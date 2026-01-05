@@ -1,0 +1,50 @@
+# Dockerfile for pg_probackup with PostgreSQL 17
+FROM postgres:17
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PG_VERSION=17
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-server-dev-17 \
+    build-essential \
+    git \
+    zlib1g-dev \
+    bison \
+    flex \
+    libicu-dev \
+    pkg-config \
+    liblz4-dev \
+    libzstd-dev \
+    libreadline-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp
+
+# Download PostgreSQL source
+RUN git clone --branch REL_17_STABLE --depth 1 https://github.com/postgres/postgres.git postgresql-src
+
+# Clone pg_probackup
+RUN git clone https://github.com/postgrespro/pg_probackup.git
+
+# Build PostgreSQL from source
+WORKDIR /tmp/postgresql-src
+RUN ./configure --prefix=/usr/local/pgsql-17 && \
+    make -j$(nproc) && \
+    make install
+
+# Build pg_probackup
+WORKDIR /tmp/pg_probackup
+RUN make USE_PGXS=1 PG_CONFIG=/usr/local/pgsql-17/bin/pg_config top_srcdir=/tmp/postgresql-src && \
+    make USE_PGXS=1 PG_CONFIG=/usr/local/pgsql-17/bin/pg_config top_srcdir=/tmp/postgresql-src install
+
+# Create symlink for easy access
+RUN ln -sf /usr/local/pgsql-17/bin/pg_probackup /usr/local/bin/pg_probackup
+
+# Verify installation
+RUN pg_probackup --version
+
+# Clean up source code
+RUN rm -rf /tmp/postgresql-src /tmp/pg_probackup
+
+CMD ["postgres"]

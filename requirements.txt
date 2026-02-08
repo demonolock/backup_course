@@ -1,2 +1,2 @@
-testgres==1.13.0
-testgres-pg_probackup2
+testgres==1.13.4
+testgres-pg-probackup2==0.5.0
